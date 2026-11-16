@@ -739,7 +739,7 @@ function revisarCumpleanosYEnviarAlerta() {
         let peopleList = [];
         let adminEmail = '';
         let adminPin = DEFAULT_ADMIN_PIN;
-        let sheetsWebhookUrl = '';
+        let sheetsWebhookUrl = localStorage.getItem(STORAGE_KEY_SHEETS_URL) || 'https://script.google.com/macros/s/AKfycbzPIWKEqMwdTxd1gyO3n9qifAOKd-KKZ3DeWq0tDrXfTzSp9o0cEXuBoBSy9w6t4apZnw/exec';
         let isAdminUnlocked = false;
 
         // --- INICIALIZACIÓN ---
