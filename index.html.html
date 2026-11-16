@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cumpleIGHO — Gestor de Cumpleaños y Calendario</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col selection:bg-brand-200 selection:text-brand-900">
+
+    <!-- =====================================================================
+         BARRA DE NAVEGACIÓN SUPERIOR
+    ====================================================================== -->
+    <header class="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/80">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+            <!-- Logo / Marca -->
+            <div class="flex items-center gap-2.5 shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-purple-500 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+                    <i data-lucide="cake" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-lg tracking-tight text-slate-900">cumple<span class="text-brand-600">IGHO</span></span>
+                    <p class="text-[11px] text-slate-500 hidden sm:block leading-none mt-0.5">Registro y Alertas de Cumpleaños</p>
+                </div>
+            </div>
+
+            <!-- Pestañas de Navegación (3 vistas: Registro, Calendario, Administrador) -->
+            <nav class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+                <button type="button" id="tab-form" onclick="switchView('form')"
+                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-brand-600 shadow-sm cursor-pointer">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Ingresar Cumpleaños</span>
+                    <span class="sm:hidden">Registrar</span>
+                </button>
+                <button type="button" id="tab-calendar" onclick="switchView('calendar')"
+                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+                    <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                    <span>Calendario</span>
+                    <span id="nav-badge" class="ml-0.5 px-1.5 py-0.2 text-[11px] font-bold rounded-full bg-brand-100 text-brand-700">0</span>
+                </button>
+                <button type="button" id="tab-admin" onclick="switchView('admin')"
+                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+                    <i id="admin-tab-lock-icon" data-lucide="lock" class="w-4 h-4 text-slate-400"></i>
+                    <span class="hidden sm:inline">Administrador</span>
+                    <span class="sm:hidden">Admin</span>
+                </button>
+            </nav>
+
+            <!-- Estado de sincronización en nube -->
+            <div class="hidden md:flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span id="cloud-status-text">Modo Local</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- =====================================================================
+         CONTENEDOR PRINCIPAL
+    ====================================================================== -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+        <!-- =====================================================================
+             VISTA 1: FORMULARIO DE INGRESO DE CUMPLEAÑOS
+        ====================================================================== -->
+        <section id="view-form" class="max-w-xl mx-auto animate-fade-in">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold border border-brand-200/60 mb-3">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Nuevo Registro
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Registra un Cumpleaños</h1>
+                <p class="text-slate-500 text-sm sm:text-base mt-2">
+                    Completa los datos para añadir la fecha al calendario general de <strong>cumpleIGHO</strong>.
+                </p>
+            </div>
+
+            <!-- Tarjeta del Formulario -->
+            <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-6 sm:p-8">
+                <form id="birthday-form" class="space-y-5" novalidate>
+                    <!-- Fila Nombre y Apellido -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Casilla 1: Nombre -->
+                        <div class="space-y-1.5">
+                            <label for="firstName" class="block text-sm font-semibold text-slate-700">
+                                Nombre <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="user" class="w-4 h-4"></i>
+                                </div>
+                                <input type="text" id="firstName" required placeholder="Ej. Valentina"
+                                    class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all">
+                            </div>
+                        </div>
+
+                        <!-- Casilla 2: Apellido -->
+                        <div class="space-y-1.5">
+                            <label for="lastName" class="block text-sm font-semibold text-slate-700">
+                                Apellido <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="badge-check" class="w-4 h-4"></i>
+                                </div>
+                                <input type="text" id="lastName" required placeholder="Ej. Rojas"
+                                    class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Casilla 3: Fecha de Nacimiento (Teclado + Calendario desplegable) -->
+                    <div class="space-y-2">
+                        <label for="dob-text" class="block text-sm font-semibold text-slate-700">
+                            Fecha de nacimiento <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                                </div>
+                                <input type="text" id="dob-text" inputmode="numeric" maxlength="10"
+                                    placeholder="DD/MM/AAAA (ej. 15/08/1996)"
+                                    class="w-full pl-10 pr-28 py-3 rounded-xl border border-slate-300 bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all">
+                            </div>
+                            <label for="dob-picker" title="Abrir calendario desplegable"
+                                class="absolute right-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-semibold border border-brand-200 transition-colors cursor-pointer">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                                <span>Calendario</span>
+                                <input type="date" id="dob-picker" class="sr-only">
+                            </label>
+                        </div>
+                        <p id="dob-error" class="hidden text-xs font-medium text-rose-600 mt-1"></p>
+                        <div id="dob-preview-pill" class="hidden items-center gap-2 text-xs text-brand-700 bg-brand-50/80 border border-brand-200/70 px-3 py-2 rounded-xl mt-2">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span id="dob-preview-text" class="font-medium"></span>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                        <button type="submit" id="submit-btn"
+                            class="w-full sm:flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-md shadow-brand-500/25 transition-all cursor-pointer">
+                            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                            <span>Guardar y Ver en Calendario</span>
+                        </button>
+                        <button type="button" onclick="switchView('calendar')"
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium py-3.5 px-5 rounded-xl border border-slate-200 transition-all cursor-pointer">
+                            <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i>
+                            <span>Ir al Calendario</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             VISTA 2: CALENDARIO INTERACTIVO
+        ====================================================================== -->
+        <section id="view-calendar" class="hidden space-y-6 animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- Columna Principal: Calendario Mensual (8 columnas) -->
+                <div class="lg:col-span-8 bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 overflow-hidden">
+                    <!-- Cabecera del Calendario -->
+                    <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="changeMonth(-1)" title="Mes anterior"
+                                class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <h2 id="calendar-month-label" class="text-lg sm:text-xl font-bold text-slate-900 min-w-[170px] text-center capitalize">
+                                Noviembre 2026
+                            </h2>
+                            <button type="button" onclick="changeMonth(1)" title="Mes siguiente"
+                                class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="goToToday()"
+                                class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 text-slate-700 transition-colors cursor-pointer">
+                                Hoy
+                            </button>
+                            <button type="button" onclick="syncFromGoogleSheets(true)" id="calendar-sync-btn"
+                                class="hidden items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                <span>Actualizar</span>
+                            </button>
+                            <button type="button" onclick="switchView('form')"
+                                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition-colors cursor-pointer">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Nuevo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Días de la semana -->
+                    <div class="grid grid-cols-7 bg-slate-50 border-b border-slate-200/70 text-center py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <div>Dom</div>
+                        <div>Lun</div>
+                        <div>Mar</div>
+                        <div>Mié</div>
+                        <div>Jue</div>
+                        <div>Vie</div>
+                        <div>Sáb</div>
+                    </div>
+
+                    <!-- Cuadrícula de días -->
+                    <div id="calendar-grid" class="grid grid-cols-7 bg-slate-100/50"></div>
+                </div>
+
+                <!-- Columna Lateral: Próximos Cumpleaños (4 columnas) -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-5 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center">
+                                    <i data-lucide="gift" class="w-4 h-4"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900">Próximos Cumpleaños</h3>
+                            </div>
+                            <span id="total-people-pill" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">0 total</span>
+                        </div>
+
+                        <p class="text-xs text-slate-500 mb-3">
+                            Haz clic en cualquier persona en el calendario o en esta lista para ver el cálculo de edad.
+                        </p>
+
+                        <div id="upcoming-list" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             VISTA 3: PANEL DE ADMINISTRADOR (PROTEGIDO POR PIN)
+        ====================================================================== -->
+        <section id="view-admin" class="hidden animate-fade-in">
+            <!-- PANTALLA DE BLOQUEO CON PIN -->
+            <div id="admin-lock-screen" class="max-w-md mx-auto py-6">
+                <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 p-7 sm:p-8 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 text-white flex items-center justify-center mx-auto mb-5 shadow-lg">
+                        <i data-lucide="shield-lock" class="w-8 h-8 text-brand-400"></i>
+                    </div>
+                    <span class="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold uppercase tracking-wider mb-2">
+                        Acceso Restringido
+                    </span>
+                    <h2 class="text-2xl font-extrabold text-slate-900">Panel de Administrador</h2>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1.5 mb-6">
+                        Ingresa el PIN numérico de 4 dígitos para configurar alertas por correo y la conexión con Google Sheets.
+                    </p>
+
+                    <form id="admin-pin-form" class="space-y-4" onsubmit="handlePinUnlock(event)">
+                        <div>
+                            <label for="admin-pin-input" class="sr-only">PIN de 4 dígitos</label>
+                            <input type="password" id="admin-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+                                placeholder="••••" autocomplete="off"
+                                class="w-44 mx-auto block text-center text-2xl font-extrabold tracking-[0.5em] py-3 px-4 rounded-2xl border-2 border-slate-300 bg-slate-50 text-slate-900 focus:bg-white focus:outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 transition-all">
+                            <p id="admin-pin-error" class="hidden text-xs font-semibold text-rose-600 mt-2">
+                                PIN incorrecto. Inténtalo nuevamente.
+                            </p>
+                        </div>
+
+                        <button type="submit"
+                            class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 px-6 rounded-xl shadow-md transition-all cursor-pointer">
+                            <i data-lucide="unlock" class="w-4 h-4"></i>
+                            <span>Desbloquear Panel</span>
+                        </button>
+                    </form>
+
+                    <p class="text-[11px] text-slate-400 mt-5">
+                        PIN inicial por defecto: <span class="font-mono font-semibold text-slate-500">1234</span> (puedes cambiarlo al entrar).
+                    </p>
+                </div>
+            </div>
+
+            <!-- CONTENIDO DEL PANEL DE ADMINISTRADOR DESBLOQUEADO -->
+            <div id="admin-unlocked-content" class="hidden space-y-6">
+                <!-- Barra Superior del Panel Admin -->
+                <div class="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-brand-600/30 border border-brand-400/30 text-brand-300 flex items-center justify-center">
+                            <i data-lucide="shield-check" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold">Administración de cumpleIGHO</h2>
+                            <p class="text-xs text-slate-400">Gestión de alertas por correo, nube Google Sheets y seguridad</p>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="lockAdminPanel()"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-colors cursor-pointer">
+                        <i data-lucide="lock" class="w-4 h-4 text-amber-300"></i>
+                        <span>Bloquear panel</span>
+                    </button>
+                </div>
+
+                <!-- Banner de Alerta Activa si hoy hay cumpleaños -->
+                <div id="admin-alert-banner" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                            <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 id="alert-banner-title" class="font-bold text-amber-950 text-sm sm:text-base">¡Hoy hay cumpleaños!</h3>
+                            <p id="alert-banner-desc" class="text-xs sm:text-sm text-amber-800 mt-0.5"></p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="triggerEmailAlert(false)"
+                        class="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Enviar Alerta Ahora</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- TARJETA 1: CONEXIÓN EN VIVO CON GOOGLE SHEETS -->
+                    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-6 space-y-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                    <i data-lucide="sheet" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 text-base">Conexión en Vivo con Google Sheets</h3>
+                                    <p class="text-xs text-slate-500">Recibe registros de otros usuarios y sincroniza el calendario</p>
+                                </div>
+                            </div>
+                            <span id="sheets-badge-status" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500">
+                                Sin conectar
+                            </span>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label for="sheets-webhook-input" class="block text-xs font-semibold text-slate-700">
+                                URL de Aplicación Web de Google Apps Script
+                            </label>
+                            <input type="url" id="sheets-webhook-input"
+                                placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                            <p class="text-[11px] text-slate-500">
+                                Cuando alguien llene el formulario, los datos viajarán automáticamente a tu hoja de Google Sheets.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="saveSheetsUrl()"
+                                class="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                <span>Guardar URL</span>
+                            </button>
+                            <button type="button" onclick="testSheetsConnection()"
+                                class="inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer">
+                                <i data-lucide="plug-zap" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                <span>Probar conexión</span>
+                            </button>
+                            <button type="button" onclick="syncFromGoogleSheets(true)"
+                                class="inline-flex items-center justify-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-colors cursor-pointer">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                <span>Sincronizar registros desde Sheets</span>
+                            </button>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100">
+                            <button type="button" onclick="openAutomationModal()"
+                                class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-3 px-4 rounded-xl transition-colors cursor-pointer">
+                                <i data-lucide="code-2" class="w-4 h-4 text-brand-400"></i>
+                                <span>Ver Script Unificado y Guía de Instalación (Google Sheets)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA 2: ALERTAS POR CORREO ELECTRÓNICO -->
+                    <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-6 space-y-5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
+                                <i data-lucide="mail-check" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-base">Alertas por Correo Electrónico</h3>
+                                <p class="text-xs text-slate-500">Soporta uno o varios correos separados por coma</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label for="admin-email-input" class="block text-xs font-semibold text-slate-700">
+                                Correo(s) destinatario(s) para recordatorios
+                            </label>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" id="admin-email-input"
+                                    placeholder="admin@correo.com, equipo@correo.com"
+                                    class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                <button type="button" onclick="saveAdminEmail()"
+                                    class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition-colors cursor-pointer shrink-0">
+                                    Guardar Correo(s)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Simulador de fecha -->
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-brand-600"></i> Simular fecha de alerta
+                                </span>
+                                <button type="button" onclick="resetSimDateToToday()" class="text-[11px] font-semibold text-brand-600 hover:underline cursor-pointer">
+                                    Volver a hoy
+                                </button>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="date" id="sim-date-input"
+                                    class="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                <button type="button" onclick="triggerEmailAlert(true)"
+                                    class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-semibold transition-colors cursor-pointer">
+                                    <i data-lucide="mail" class="w-3.5 h-3.5 text-brand-600"></i>
+                                    <span>Probar correo ahora</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TARJETA 3: SEGURIDAD Y CAMBIO DE PIN -->
+                <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                <i data-lucide="key-round" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-base">Cambiar PIN de Administrador</h3>
+                                <p class="text-xs text-slate-500">Actualiza el código numérico de 4 dígitos que protege esta pestaña.</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleChangePin(event)" class="flex flex-wrap items-center gap-2">
+                            <input type="password" id="new-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+                                placeholder="Nuevo PIN (4 dígitos)"
+                                class="w-44 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs sm:text-sm font-semibold text-center tracking-widest focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <input type="password" id="confirm-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+                                placeholder="Confirmar PIN"
+                                class="w-40 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs sm:text-sm font-semibold text-center tracking-widest focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <button type="submit"
+                                class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-colors cursor-pointer">
+                                Actualizar PIN
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- =====================================================================
+         MODAL: DETALLE DEL CUMPLEAÑOS Y CÁLCULO DE EDAD
+    ====================================================================== -->
+    <div id="detail-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onclick="closeDetailModal()"></div>
+
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-fade-in">
+                <!-- Cabecera con gradiente -->
+                <div class="bg-gradient-to-br from-brand-600 via-purple-600 to-indigo-700 p-6 text-white relative">
+                    <button type="button" onclick="closeDetailModal()"
+                        class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+
+                    <div class="flex items-center gap-4">
+                        <div id="modal-avatar" class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl font-extrabold shadow-inner uppercase">
+                            VR
+                        </div>
+                        <div>
+                            <span id="modal-status-badge" class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white/20 text-white mb-1">
+                                Ficha de Cumpleaños
+                            </span>
+                            <h3 id="modal-full-name" class="text-xl font-extrabold leading-tight">Nombre Apellido</h3>
+                            <p id="modal-dob-formatted" class="text-brand-100 text-xs mt-0.5 flex items-center gap-1.5">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> 15 de Agosto de 1996
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cuerpo del Modal -->
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-brand-50/70 border border-brand-200/70 rounded-2xl p-3.5 text-center">
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-brand-600 block">Edad en <span id="modal-selected-year">2026</span></span>
+                            <span id="modal-turning-age" class="text-3xl font-extrabold text-slate-900 mt-1 block">30</span>
+                            <span class="text-xs text-slate-500">años cumplidos</span>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 text-center">
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">Edad Actual</span>
+                            <span id="modal-current-age" class="text-3xl font-extrabold text-slate-900 mt-1 block">29</span>
+                            <span id="modal-exact-months" class="text-xs text-slate-500">y 4 meses</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-3 text-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500 flex items-center gap-2">
+                                <i data-lucide="hourglass" class="w-4 h-4 text-brand-500"></i> Próximo cumpleaños
+                            </span>
+                            <span id="modal-countdown" class="font-bold text-slate-900">En 45 días</span>
+                        </div>
+                        <div class="border-t border-slate-200/70 pt-2.5 flex items-center justify-between">
+                            <span class="text-slate-500 flex items-center gap-2">
+                                <i data-lucide="layers" class="w-4 h-4 text-emerald-500"></i> Generación
+                            </span>
+                            <span id="modal-generation" class="font-semibold text-slate-800">Generación Z</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-between items-center">
+                        <button type="button" id="modal-delete-btn"
+                            class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-2 rounded-xl transition-colors cursor-pointer">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Eliminar persona
+                        </button>
+                        <button type="button" onclick="closeDetailModal()"
+                            class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL: GUÍA Y SCRIPT UNIFICADO DE GOOGLE APPS SCRIPT
+    ====================================================================== -->
+    <div id="automation-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onclick="closeAutomationModal()"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-fade-in">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                            <i data-lucide="bot" class="w-4 h-4"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">Script Unificado Google Sheets + Alertas Automáticas</h3>
+                    </div>
+                    <button type="button" onclick="closeAutomationModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4 max-h-[82vh] overflow-y-auto text-xs sm:text-sm text-slate-600">
+                    <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs leading-relaxed space-y-1.5">
+                        <p class="font-bold">Pasos rápidos para conectar cumpleIGHO con Google Sheets:</p>
+                        <ol class="list-decimal list-inside space-y-1">
+                            <li>Crea una hoja en Google Sheets con encabezados en fila 1: <strong>Nombre</strong> (A1), <strong>Apellido</strong> (B1), <strong>FechaNacimiento</strong> (C1).</li>
+                            <li>Ve a <strong>Extensiones → Apps Script</strong>, pega el código de abajo y cambia <code class="bg-emerald-100 px-1 rounded">CORREOS_ALERTA</code>.</li>
+                            <li>Haz clic en <strong>Implementar → Nueva implementación → Aplicación web</strong> (Ejecutar como: <em>Yo</em>; Quién tiene acceso: <em>Cualquier usuario</em>).</li>
+                            <li>Copia la URL generada y pégala en el campo <strong>URL de Aplicación Web de Google Apps Script</strong> en el panel de administrador.</li>
+                        </ol>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Código Completo (doPost + doGet + Alertas Diarias)</span>
+                            <button type="button" onclick="copyAppsScript()"
+                                class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 px-3 py-1.5 rounded-lg cursor-pointer">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar código completo
+                            </button>
+                        </div>
+                        <pre id="apps-script-code" class="bg-slate-900 text-slate-100 p-4 rounded-2xl text-xs overflow-x-auto leading-relaxed font-mono">// ============================================================================
+// SCRIPT UNIFICADO PARA cumpleIGHO (Google Sheets + Sincronización + Alertas)
+// ============================================================================
+const CORREOS_ALERTA = "admin@ejemplo.com, segundo@ejemplo.com"; // Separa con coma si son varios
+
+// 1. RECIBE NUEVOS REGISTROS DESDE EL FORMULARIO WEB (POST)
+function doPost(e) {
+  try {
+    const hoja = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const datos = JSON.parse(e.postData.contents);
+    const nombre = (datos.firstName || "").trim();
+    const apellido = (datos.lastName || "").trim();
+    const fechaNacimiento = (datos.dob || "").trim(); // Formato AAAA-MM-DD
+
+    if (!nombre || !apellido || !fechaNacimiento) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Datos incompletos" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    hoja.appendRow([nombre, apellido, fechaNacimiento]);
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "ok" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 2. DEVUELVE TODOS LOS CUMPLEAÑOS AL CALENDARIO WEB (GET)
+function doGet(e) {
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const filas = hoja.getDataRange().getValues();
+  const registros = [];
+
+  for (let i = 1; i &lt; filas.length; i++) {
+    const [nombre, apellido, fechaRaw] = filas[i];
+    if (!nombre || !apellido || !fechaRaw) continue;
+
+    let dobIso = "";
+    if (fechaRaw instanceof Date) {
+      dobIso = Utilities.formatDate(fechaRaw, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    } else {
+      dobIso = String(fechaRaw).trim();
+    }
+
+    registros.push({
+      id: "sheets-" + i,
+      firstName: String(nombre).trim(),
+      lastName: String(apellido).trim(),
+      dob: dobIso
+    });
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ status: "ok", records: registros }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// 3. ENVÍA ALERTA DIARIA AUTOMÁTICA POR CORREO (Configurar Activador a las 8:00 AM)
+function revisarCumpleanosYEnviarAlerta() {
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const datos = hoja.getDataRange().getValues();
+  const hoy = new Date();
+  const mesHoy = hoy.getMonth() + 1;
+  const diaHoy = hoy.getDate();
+
+  let cumpleaneros = [];
+
+  for (let i = 1; i &lt; datos.length; i++) {
+    const [nombre, apellido, fechaNac] = datos[i];
+    if (!nombre || !fechaNac) continue;
+    const f = new Date(fechaNac);
+    if ((f.getMonth() + 1) === mesHoy &amp;&amp; f.getDate() === diaHoy) {
+      const edad = hoy.getFullYear() - f.getFullYear();
+      cumpleaneros.push(`• ${nombre} ${apellido} (cumple ${edad} años)`);
+    }
+  }
+
+  if (cumpleaneros.length &gt; 0) {
+    MailApp.sendEmail({
+      to: CORREOS_ALERTA,
+      subject: `🎂 Alerta cumpleIGHO: ¡Hoy hay ${cumpleaneros.length} cumpleaños!`,
+      body: `¡Hola!\n\nHoy están de cumpleaños en cumpleIGHO:\n\n${cumpleaneros.join("\n")}\n\n— Recordatorio automático de cumpleIGHO`
+    });
+  }
+}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR DE NOTIFICACIONES TOAST -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- =====================================================================
+         LÓGICA DE LA APLICACIÓN (JAVASCRIPT)
+    ====================================================================== -->
+    <script>
+        // --- CONSTANTES Y ESTADO GLOBAL ---
+        const STORAGE_KEY_PEOPLE = 'cumpleigho_registros_v1';
+        const STORAGE_KEY_ADMIN_EMAIL = 'cumpleigho_admin_email_v1';
+        const STORAGE_KEY_ADMIN_PIN = 'cumpleigho_admin_pin_v1';
+        const STORAGE_KEY_SHEETS_URL = 'cumpleigho_sheets_url_v1';
+        const DEFAULT_ADMIN_PIN = '1234';
+
+        const MONTHS_ES = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+
+        const REAL_TODAY = new Date();
+        let currentCalendarYear = REAL_TODAY.getFullYear();
+        let currentCalendarMonth = REAL_TODAY.getMonth();
+        let peopleList = [];
+        let adminEmail = '';
+        let adminPin = DEFAULT_ADMIN_PIN;
+        let sheetsWebhookUrl = '';
+        let isAdminUnlocked = false;
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                loadInitialData();
+                setupDateInputs();
+                setupFormSubmission();
+                setupAdminPanel();
+                renderAll();
+                if (sheetsWebhookUrl) {
+                    syncFromGoogleSheets(false);
+                }
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.error('Error al inicializar cumpleIGHO:', err);
+            }
+        });
+
+        function loadInitialData() {
+            const savedPeople = localStorage.getItem(STORAGE_KEY_PEOPLE);
+            const savedEmail = localStorage.getItem(STORAGE_KEY_ADMIN_EMAIL);
+            const savedPin = localStorage.getItem(STORAGE_KEY_ADMIN_PIN);
+            const savedSheetsUrl = localStorage.getItem(STORAGE_KEY_SHEETS_URL);
+
+            if (savedPin && /^\d{4}$/.test(savedPin)) {
+                adminPin = savedPin;
+            } else {
+                adminPin = DEFAULT_ADMIN_PIN;
+                localStorage.setItem(STORAGE_KEY_ADMIN_PIN, adminPin);
+            }
+
+            if (savedSheetsUrl) {
+                sheetsWebhookUrl = savedSheetsUrl;
+                const urlInput = document.getElementById('sheets-webhook-input');
+                if (urlInput) urlInput.value = sheetsWebhookUrl;
+            }
+            updateCloudStatusUI();
+
+            if (savedPeople) {
+                peopleList = JSON.parse(savedPeople);
+            } else {
+                const y = REAL_TODAY.getFullYear();
+                const m = String(REAL_TODAY.getMonth() + 1).padStart(2, '0');
+                const d = String(REAL_TODAY.getDate()).padStart(2, '0');
+                peopleList = [
+                    { id: 'demo-1', firstName: 'Camila', lastName: 'Mendoza', dob: `${y - 28}-${m}-${d}` },
+                    { id: 'demo-2', firstName: 'Mateo', lastName: 'Villavicencio', dob: `1995-${m}-15` },
+                    { id: 'demo-3', firstName: 'Sofía', lastName: 'Andrade', dob: '2001-08-22' }
+                ];
+                savePeople();
+            }
+
+            if (savedEmail) {
+                adminEmail = savedEmail;
+                const emailInput = document.getElementById('admin-email-input');
+                if (emailInput) emailInput.value = adminEmail;
+            }
+
+            const simInput = document.getElementById('sim-date-input');
+            if (simInput) {
+                simInput.value = formatDateToISO(REAL_TODAY);
+            }
+        }
+
+        function savePeople() {
+            localStorage.setItem(STORAGE_KEY_PEOPLE, JSON.stringify(peopleList));
+        }
+
+        // --- NAVEGACIÓN ENTRE PESTAÑAS ---
+        function switchView(viewName) {
+            const views = {
+                form: document.getElementById('view-form'),
+                calendar: document.getElementById('view-calendar'),
+                admin: document.getElementById('view-admin')
+            };
+            const tabs = {
+                form: document.getElementById('tab-form'),
+                calendar: document.getElementById('tab-calendar'),
+                admin: document.getElementById('tab-admin')
+            };
+
+            const activeClasses = ['bg-white', 'text-brand-600', 'shadow-sm', 'font-semibold'];
+            const inactiveClasses = ['text-slate-600', 'hover:text-slate-900', 'font-medium'];
+
+            Object.keys(views).forEach(key => {
+                if (key === viewName) {
+                    views[key].classList.remove('hidden');
+                    tabs[key].classList.add(...activeClasses);
+                    tabs[key].classList.remove(...inactiveClasses);
+                } else {
+                    views[key].classList.add('hidden');
+                    tabs[key].classList.remove(...activeClasses);
+                    tabs[key].classList.add(...inactiveClasses);
+                }
+            });
+
+            if (viewName === 'calendar') {
+                renderAll();
+                if (sheetsWebhookUrl) {
+                    syncFromGoogleSheets(false);
+                }
+            } else if (viewName === 'admin') {
+                renderAdminSecurityState();
+            }
+
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        // --- BLOQUEO CON PIN DEL PANEL DE ADMINISTRADOR ---
+        function renderAdminSecurityState() {
+            const lockScreen = document.getElementById('admin-lock-screen');
+            const unlockedContent = document.getElementById('admin-unlocked-content');
+            const tabLockIcon = document.getElementById('admin-tab-lock-icon');
+
+            if (isAdminUnlocked) {
+                lockScreen.classList.add('hidden');
+                unlockedContent.classList.remove('hidden');
+                if (tabLockIcon) {
+                    tabLockIcon.setAttribute('data-lucide', 'unlock');
+                    tabLockIcon.classList.remove('text-slate-400');
+                    tabLockIcon.classList.add('text-emerald-600');
+                }
+                checkBirthdayAlerts();
+            } else {
+                lockScreen.classList.remove('hidden');
+                unlockedContent.classList.add('hidden');
+                if (tabLockIcon) {
+                    tabLockIcon.setAttribute('data-lucide', 'lock');
+                    tabLockIcon.classList.remove('text-emerald-600');
+                    tabLockIcon.classList.add('text-slate-400');
+                }
+                const pinInput = document.getElementById('admin-pin-input');
+                if (pinInput) {
+                    pinInput.value = '';
+                    setTimeout(() => pinInput.focus(), 50);
+                }
+            }
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function handlePinUnlock(event) {
+            event.preventDefault();
+            const pinInput = document.getElementById('admin-pin-input');
+            const errorEl = document.getElementById('admin-pin-error');
+            const enteredPin = pinInput.value.trim();
+
+            if (enteredPin === adminPin) {
+                isAdminUnlocked = true;
+                errorEl.classList.add('hidden');
+                pinInput.value = '';
+                renderAdminSecurityState();
+                showToast('Panel de administrador desbloqueado.', 'success');
+            } else {
+                errorEl.classList.remove('hidden');
+                pinInput.value = '';
+                pinInput.focus();
+                showToast('PIN incorrecto. Verifica los 4 dígitos.', 'error');
+            }
+        }
+
+        function lockAdminPanel() {
+            isAdminUnlocked = false;
+            renderAdminSecurityState();
+            showToast('Panel de administrador bloqueado.', 'info');
+        }
+
+        function handleChangePin(event) {
+            event.preventDefault();
+            const newPin = document.getElementById('new-pin-input').value.trim();
+            const confirmPin = document.getElementById('confirm-pin-input').value.trim();
+
+            if (!/^\d{4}$/.test(newPin)) {
+                showToast('El nuevo PIN debe tener exactamente 4 dígitos numéricos.', 'error');
+                return;
+            }
+            if (newPin !== confirmPin) {
+                showToast('Los PIN ingresados no coinciden.', 'error');
+                return;
+            }
+
+            adminPin = newPin;
+            localStorage.setItem(STORAGE_KEY_ADMIN_PIN, adminPin);
+            document.getElementById('new-pin-input').value = '';
+            document.getElementById('confirm-pin-input').value = '';
+            showToast('¡PIN de administrador actualizado correctamente!', 'success');
+        }
+
+        // --- CONEXIÓN EN VIVO CON GOOGLE SHEETS (POST Y GET) ---
+        function updateCloudStatusUI() {
+            const dot = document.getElementById('cloud-status-dot');
+            const text = document.getElementById('cloud-status-text');
+            const badge = document.getElementById('sheets-badge-status');
+            const calSyncBtn = document.getElementById('calendar-sync-btn');
+
+            if (sheetsWebhookUrl) {
+                if (dot) {
+                    dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                }
+                if (text) text.textContent = 'Sheets Conectado';
+                if (badge) {
+                    badge.textContent = 'Conectado';
+                    badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700';
+                }
+                if (calSyncBtn) {
+                    calSyncBtn.classList.remove('hidden');
+                    calSyncBtn.classList.add('inline-flex');
+                }
+            } else {
+                if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                if (text) text.textContent = 'Modo Local';
+                if (badge) {
+                    badge.textContent = 'Sin conectar';
+                    badge.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500';
+                }
+                if (calSyncBtn) {
+                    calSyncBtn.classList.add('hidden');
+                    calSyncBtn.classList.remove('inline-flex');
+                }
+            }
+        }
+
+        function saveSheetsUrl() {
+            const input = document.getElementById('sheets-webhook-input');
+            const url = input.value.trim();
+
+            if (!url) {
+                sheetsWebhookUrl = '';
+                localStorage.removeItem(STORAGE_KEY_SHEETS_URL);
+                updateCloudStatusUI();
+                showToast('Conexión con Google Sheets desactivada (Modo Local).', 'info');
+                return;
+            }
+
+            if (!url.startsWith('https://script.google.com/')) {
+                showToast('Ingresa una URL válida de Google Apps Script (https://script.google.com/...).', 'error');
+                input.focus();
+                return;
+            }
+
+            sheetsWebhookUrl = url;
+            localStorage.setItem(STORAGE_KEY_SHEETS_URL, sheetsWebhookUrl);
+            updateCloudStatusUI();
+            showToast('URL de Google Sheets guardada correctamente.', 'success');
+            syncFromGoogleSheets(true);
+        }
+
+        async function testSheetsConnection() {
+            const inputUrl = document.getElementById('sheets-webhook-input').value.trim();
+            const targetUrl = inputUrl || sheetsWebhookUrl;
+
+            if (!targetUrl || !targetUrl.startsWith('https://script.google.com/')) {
+                showToast('Ingresa primero una URL válida de Google Apps Script.', 'error');
+                return;
+            }
+
+            showToast('Probando conexión con Google Sheets...', 'info');
+            try {
+                const response = await fetch(targetUrl, { method: 'GET' });
+                const data = await response.json();
+                if (data && data.status === 'ok') {
+                    showToast(`¡Conexión exitosa! Se encontraron ${data.records?.length || 0} registros en Sheets.`, 'success');
+                } else {
+                    showToast('Respuesta inesperada del script. Revisa que esté implementado como Aplicación Web.', 'error');
+                }
+            } catch (err) {
+                showToast('No se pudo conectar. Verifica los permisos de "Cualquier usuario" en Apps Script.', 'error');
+            }
+        }
+
+        async function sendPersonToGoogleSheets(person) {
+            if (!sheetsWebhookUrl) return false;
+            try {
+                await fetch(sheetsWebhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: JSON.stringify({
+                        firstName: person.firstName,
+                        lastName: person.lastName,
+                        dob: person.dob
+                    })
+                });
+                return true;
+            } catch (err) {
+                console.error('Error al enviar a Google Sheets:', err);
+                return false;
+            }
+        }
+
+        async function syncFromGoogleSheets(showFeedback = false) {
+            if (!sheetsWebhookUrl) {
+                if (showFeedback) {
+                    showToast('Configura primero la URL de Google Sheets.', 'error');
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(sheetsWebhookUrl, { method: 'GET' });
+                const data = await response.json();
+
+                if (data && data.status === 'ok' && Array.isArray(data.records)) {
+                    let addedCount = 0;
+
+                    data.records.forEach(remote => {
+                        if (!remote.firstName || !remote.lastName || !remote.dob) return;
+                        const normalizedDob = normalizeIsoDate(remote.dob);
+                        if (!normalizedDob) return;
+
+                        const exists = peopleList.some(local =>
+                            local.firstName.trim().toLowerCase() === remote.firstName.trim().toLowerCase() &&
+                            local.lastName.trim().toLowerCase() === remote.lastName.trim().toLowerCase() &&
+                            local.dob === normalizedDob
+                        );
+
+                        if (!exists) {
+                            peopleList.push({
+                                id: remote.id || ('sheets-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+                                firstName: remote.firstName.trim(),
+                                lastName: remote.lastName.trim(),
+                                dob: normalizedDob
+                            });
+                            addedCount++;
+                        }
+                    });
+
+                    if (addedCount > 0) {
+                        savePeople();
+                        renderAll();
+                    }
+
+                    if (showFeedback) {
+                        showToast(
+                            addedCount > 0
+                                ? `Sincronizado: ${addedCount} nuevo(s) cumpleaños importado(s) desde Sheets.`
+                                : 'Calendario al día con Google Sheets.',
+                            'success'
+                        );
+                    }
+                }
+            } catch (err) {
+                if (showFeedback) {
+                    showToast('Error al sincronizar con Google Sheets. Revisa la URL.', 'error');
+                }
+            }
+        }
+
+        function normalizeIsoDate(raw) {
+            const str = String(raw).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+            const parsed = new Date(str);
+            if (!isNaN(parsed.getTime())) {
+                return formatDateToISO(parsed);
+            }
+            return null;
+        }
+
+        // --- ENTRADA DUAL DE FECHA (TECLADO + CALENDARIO DESPLEGABLE) ---
+        function setupDateInputs() {
+            const textInput = document.getElementById('dob-text');
+            const pickerInput = document.getElementById('dob-picker');
+            if (!textInput || !pickerInput) return;
+
+            const maxIso = formatDateToISO(REAL_TODAY);
+            pickerInput.max = maxIso;
+
+            textInput.addEventListener('input', (e) => {
+                let digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+                let formatted = '';
+                if (digits.length > 0) formatted += digits.substring(0, 2);
+                if (digits.length >= 3) formatted += '/' + digits.substring(2, 4);
+                if (digits.length >= 5) formatted += '/' + digits.substring(4, 8);
+                e.target.value = formatted;
+
+                if (digits.length === 8) {
+                    const parsed = parseSpanishDate(formatted);
+                    if (parsed) {
+                        pickerInput.value = formatDateToISO(parsed);
+                        hideDobError();
+                        showDobPreview(parsed);
+                    } else {
+                        showDobError('La fecha ingresada no es válida o es futura.');
+                    }
+                } else {
+                    hideDobPreview();
+                }
+            });
+
+            pickerInput.addEventListener('change', (e) => {
+                const isoVal = e.target.value;
+                if (!isoVal) return;
+                const [year, month, day] = isoVal.split('-').map(Number);
+                const dateObj = new Date(year, month - 1, day);
+                if (dateObj > REAL_TODAY) {
+                    showDobError('La fecha de nacimiento no puede ser futura.');
+                    return;
+                }
+                textInput.value = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                hideDobError();
+                showDobPreview(dateObj);
+            });
+        }
+
+        function parseSpanishDate(str) {
+            const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
+            if (!match) return null;
+            const day = parseInt(match[1], 10);
+            const month = parseInt(match[2], 10);
+            const year = parseInt(match[3], 10);
+
+            if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+            const date = new Date(year, month - 1, day);
+            if (
+                date.getFullYear() !== year ||
+                date.getMonth() !== month - 1 ||
+                date.getDate() !== day
+            ) {
+                return null;
+            }
+            if (date > REAL_TODAY) return null;
+            return date;
+        }
+
+        function showDobError(msg) {
+            const errEl = document.getElementById('dob-error');
+            errEl.textContent = msg;
+            errEl.classList.remove('hidden');
+            hideDobPreview();
+        }
+
+        function hideDobError() {
+            document.getElementById('dob-error').classList.add('hidden');
+        }
+
+        function showDobPreview(dateObj) {
+            const pill = document.getElementById('dob-preview-pill');
+            const text = document.getElementById('dob-preview-text');
+            const age = calculateAgeOnDate(dateObj, REAL_TODAY);
+            text.textContent = `${dateObj.getDate()} de ${MONTHS_ES[dateObj.getMonth()]} de ${dateObj.getFullYear()} • Edad actual: ${age.years} años`;
+            pill.classList.remove('hidden');
+            pill.classList.add('flex');
+        }
+
+        function hideDobPreview() {
+            const pill = document.getElementById('dob-preview-pill');
+            pill.classList.add('hidden');
+            pill.classList.remove('flex');
+        }
+
+        // --- ENVÍO DEL FORMULARIO ---
+        function setupFormSubmission() {
+            const form = document.getElementById('birthday-form');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const firstName = document.getElementById('firstName').value.trim();
+                const lastName = document.getElementById('lastName').value.trim();
+                const textDate = document.getElementById('dob-text').value.trim();
+
+                if (!firstName || !lastName) {
+                    showToast('Por favor completa el nombre y el apellido.', 'error');
+                    return;
+                }
+
+                const parsedDate = parseSpanishDate(textDate);
+                if (!parsedDate) {
+                    showDobError('Ingresa una fecha válida en formato DD/MM/AAAA o usa el calendario.');
+                    document.getElementById('dob-text').focus();
+                    return;
+                }
+
+                const isoDob = formatDateToISO(parsedDate);
+                const newPerson = {
+                    id: 'person-' + Date.now(),
+                    firstName,
+                    lastName,
+                    dob: isoDob
+                };
+
+                // 1. Guardar inmediatamente en localStorage como respaldo
+                peopleList.push(newPerson);
+                savePeople();
+
+                // 2. Si hay URL de Google Sheets configurada, enviar en vivo
+                let sentToCloud = false;
+                if (sheetsWebhookUrl) {
+                    sentToCloud = await sendPersonToGoogleSheets(newPerson);
+                }
+
+                form.reset();
+                hideDobPreview();
+                hideDobError();
+
+                currentCalendarMonth = parsedDate.getMonth();
+                currentCalendarYear = REAL_TODAY.getFullYear();
+
+                if (sentToCloud) {
+                    showToast(`¡${firstName} ${lastName} guardado y enviado a Google Sheets!`, 'success');
+                } else {
+                    showToast(`¡Cumpleaños de ${firstName} ${lastName} registrado!`, 'success');
+                }
+
+                switchView('calendar');
+            });
+        }
+
+        // --- RENDERIZADO GLOBAL Y CONTADORES ---
+        function renderAll() {
+            updateCounters();
+            renderCalendar();
+            renderUpcomingList();
+            checkBirthdayAlerts();
+        }
+
+        function updateCounters() {
+            const count = peopleList.length;
+            document.getElementById('nav-badge').textContent = count;
+            document.getElementById('total-people-pill').textContent = `${count} total`;
+        }
+
+        // --- CALENDARIO MENSUAL ---
+        function changeMonth(delta) {
+            currentCalendarMonth += delta;
+            if (currentCalendarMonth > 11) {
+                currentCalendarMonth = 0;
+                currentCalendarYear++;
+            } else if (currentCalendarMonth < 0) {
+                currentCalendarMonth = 11;
+                currentCalendarYear--;
+            }
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentCalendarYear = REAL_TODAY.getFullYear();
+            currentCalendarMonth = REAL_TODAY.getMonth();
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const label = document.getElementById('calendar-month-label');
+            const grid = document.getElementById('calendar-grid');
+            label.textContent = `${MONTHS_ES[currentCalendarMonth]} ${currentCalendarYear}`;
+            grid.innerHTML = '';
+
+            const firstDayOfMonth = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay();
+            const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+
+            const monthBirthdays = {};
+            peopleList.forEach(person => {
+                const [, m, d] = person.dob.split('-').map(Number);
+                if (m - 1 === currentCalendarMonth) {
+                    if (!monthBirthdays[d]) monthBirthdays[d] = [];
+                    monthBirthdays[d].push(person);
+                }
+            });
+
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'min-h-[88px] sm:min-h-[108px] bg-slate-50/60 border-b border-r border-slate-100';
+                grid.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const isToday =
+                    day === REAL_TODAY.getDate() &&
+                    currentCalendarMonth === REAL_TODAY.getMonth() &&
+                    currentCalendarYear === REAL_TODAY.getFullYear();
+
+                const bdays = monthBirthdays[day] || [];
+                const cell = document.createElement('div');
+                cell.className = `min-h-[88px] sm:min-h-[108px] p-1.5 sm:p-2 border-b border-r border-slate-100 transition-colors flex flex-col justify-between ${
+                    bdays.length > 0 ? 'bg-brand-50/30 hover:bg-brand-50/70' : 'bg-white hover:bg-slate-50/70'
+                }`;
+
+                const topRow = document.createElement('div');
+                topRow.className = 'flex items-center justify-between';
+
+                const dayNum = document.createElement('span');
+                dayNum.textContent = day;
+                dayNum.className = isToday
+                    ? 'w-7 h-7 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shadow-sm'
+                    : 'text-xs sm:text-sm font-semibold text-slate-700 px-1';
+                topRow.appendChild(dayNum);
+
+                if (bdays.length > 0) {
+                    const cakeIcon = document.createElement('span');
+                    cakeIcon.className = 'text-xs';
+                    cakeIcon.textContent = '🎂';
+                    topRow.appendChild(cakeIcon);
+                }
+                cell.appendChild(topRow);
+
+                const listDiv = document.createElement('div');
+                listDiv.className = 'mt-1.5 space-y-1 overflow-y-auto max-h-[70px]';
+
+                bdays.forEach(person => {
+                    const birthYear = parseInt(person.dob.split('-')[0], 10);
+                    const turningAge = currentCalendarYear - birthYear;
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.onclick = () => openDetailModal(person.id, currentCalendarYear);
+                    btn.className =
+                        'w-full text-left px-2 py-1 rounded-lg bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white text-[11px] sm:text-xs font-medium shadow-sm transition-all flex items-center justify-between gap-1 cursor-pointer group';
+                    btn.innerHTML = `
+                        <span class="truncate font-semibold">${escapeHtml(person.firstName)} ${escapeHtml(person.lastName[0])}.</span>
+                        <span class="shrink-0 bg-white/20 px-1.5 py-0.2 rounded text-[10px] font-bold">${turningAge >= 0 ? turningAge + 'a' : ''}</span>
+                    `;
+                    listDiv.appendChild(btn);
+                });
+
+                cell.appendChild(listDiv);
+                grid.appendChild(cell);
+            }
+
+            const totalCells = firstDayOfMonth + daysInMonth;
+            const remaining = (7 - (totalCells % 7)) % 7;
+            for (let i = 0; i < remaining; i++) {
+                const trailing = document.createElement('div');
+                trailing.className = 'min-h-[88px] sm:min-h-[108px] bg-slate-50/60 border-b border-r border-slate-100';
+                grid.appendChild(trailing);
+            }
+        }
+
+        // --- LISTA DE PRÓXIMOS CUMPLEAÑOS ---
+        function renderUpcomingList() {
+            const container = document.getElementById('upcoming-list');
+            if (!container) return;
+
+            if (peopleList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        No hay cumpleaños registrados todavía.
+                    </div>
+                `;
+                return;
+            }
+
+            const enriched = peopleList.map(p => {
+                const daysUntil = getDaysUntilNextBirthday(p.dob, REAL_TODAY);
+                const [y, m, d] = p.dob.split('-').map(Number);
+                const nextYear = REAL_TODAY.getFullYear() + (daysUntil === 0 ? 0 : (new Date(REAL_TODAY.getFullYear(), m - 1, d) < new Date(REAL_TODAY.getFullYear(), REAL_TODAY.getMonth(), REAL_TODAY.getDate()) ? 1 : 0));
+                return { ...p, daysUntil, nextYear, day: d, month: m };
+            }).sort((a, b) => a.daysUntil - b.daysUntil);
+
+            container.innerHTML = enriched.map(p => {
+                const isToday = p.daysUntil === 0;
+                const badgeText = isToday
+                    ? '¡Hoy!'
+                    : p.daysUntil === 1
+                    ? 'Mañana'
+                    : `En ${p.daysUntil} días`;
+                const badgeClass = isToday
+                    ? 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
+                    : 'bg-slate-100 text-slate-600 border-slate-200';
+
+                return `
+                    <button type="button" onclick="openDetailModal('${p.id}', ${p.nextYear})"
+                        class="w-full flex items-center justify-between p-2.5 rounded-2xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/40 transition-all text-left cursor-pointer group">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-xl ${isToday ? 'bg-amber-500 text-white' : 'bg-brand-100 text-brand-700'} font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+                                ${escapeHtml(p.firstName[0])}${escapeHtml(p.lastName[0])}
+                            </div>
+                            <div class="truncate">
+                                <p class="text-sm font-semibold text-slate-800 group-hover:text-brand-700 truncate">
+                                    ${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}
+                                </p>
+                                <p class="text-xs text-slate-500">${p.day} de ${MONTHS_ES[p.month - 1]}</p>
+                            </div>
+                        </div>
+                        <span class="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border ${badgeClass}">
+                            ${badgeText}
+                        </span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // --- MODAL DE DETALLES DEL CUMPLEAÑOS ---
+        function openDetailModal(personId, selectedYear) {
+            const person = peopleList.find(p => p.id === personId);
+            if (!person) return;
+
+            const [birthYear, birthMonth, birthDay] = person.dob.split('-').map(Number);
+            const birthDate = new Date(birthYear, birthMonth - 1, birthDay);
+
+            const turningAge = selectedYear - birthYear;
+            const currentAge = calculateAgeOnDate(birthDate, REAL_TODAY);
+            const daysLeft = getDaysUntilNextBirthday(person.dob, REAL_TODAY);
+            const generation = getGeneration(birthYear);
+
+            document.getElementById('modal-avatar').textContent = `${person.firstName[0]}${person.lastName[0]}`;
+            document.getElementById('modal-full-name').textContent = `${person.firstName} ${person.lastName}`;
+            document.getElementById('modal-dob-formatted').textContent =
+                `Nació el ${birthDay} de ${MONTHS_ES[birthMonth - 1]} de ${birthYear}`;
+
+            document.getElementById('modal-selected-year').textContent = selectedYear;
+            document.getElementById('modal-turning-age').textContent = turningAge >= 0 ? turningAge : '—';
+            document.getElementById('modal-current-age').textContent = currentAge.years;
+            document.getElementById('modal-exact-months').textContent =
+                `y ${currentAge.months} ${currentAge.months === 1 ? 'mes' : 'meses'}`;
+
+            const statusBadge = document.getElementById('modal-status-badge');
+            const countdownEl = document.getElementById('modal-countdown');
+
+            if (daysLeft === 0) {
+                statusBadge.textContent = '🎉 ¡Está de cumpleaños hoy!';
+                statusBadge.className = 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-400 text-slate-900 mb-1';
+                countdownEl.innerHTML = '<span class="text-amber-600">¡Es hoy! 🎂</span>';
+            } else {
+                statusBadge.textContent = 'Ficha de Cumpleaños';
+                statusBadge.className = 'inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white/20 text-white mb-1';
+                countdownEl.textContent = `Faltan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'}`;
+            }
+
+            document.getElementById('modal-generation').textContent = generation;
+
+            const deleteBtn = document.getElementById('modal-delete-btn');
+            deleteBtn.onclick = () => deletePerson(person.id);
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+
+        function deletePerson(personId) {
+            peopleList = peopleList.filter(p => p.id !== personId);
+            savePeople();
+            closeDetailModal();
+            renderAll();
+            showToast('Registro eliminado correctamente.', 'info');
+        }
+
+        // --- FUNCIONES DE ADMINISTRADOR Y ALERTAS POR CORREO ---
+        function setupAdminPanel() {
+            const simInput = document.getElementById('sim-date-input');
+            if (simInput) {
+                simInput.addEventListener('change', () => {
+                    checkBirthdayAlerts();
+                });
+            }
+        }
+
+        function saveAdminEmail() {
+            const input = document.getElementById('admin-email-input');
+            const rawEmails = input.value.trim();
+            if (!rawEmails) {
+                showToast('Ingresa al menos un correo electrónico válido.', 'error');
+                input.focus();
+                return;
+            }
+
+            const emailList = rawEmails.split(',').map(e => e.trim()).filter(Boolean);
+            const allValid = emailList.every(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+
+            if (!allValid) {
+                showToast('Verifica que todos los correos separados por coma tengan un formato válido.', 'error');
+                input.focus();
+                return;
+            }
+
+            adminEmail = emailList.join(', ');
+            input.value = adminEmail;
+            localStorage.setItem(STORAGE_KEY_ADMIN_EMAIL, adminEmail);
+            showToast(`Correo(s) de alerta guardados: ${adminEmail}`, 'success');
+            checkBirthdayAlerts();
+        }
+
+        function resetSimDateToToday() {
+            const simInput = document.getElementById('sim-date-input');
+            if (simInput) {
+                simInput.value = formatDateToISO(REAL_TODAY);
+                checkBirthdayAlerts();
+            }
+        }
+
+        function getReferenceDate() {
+            const simVal = document.getElementById('sim-date-input')?.value;
+            if (simVal) {
+                const [y, m, d] = simVal.split('-').map(Number);
+                return new Date(y, m - 1, d);
+            }
+            return REAL_TODAY;
+        }
+
+        function getBirthdaysOnDate(refDate) {
+            const m = refDate.getMonth() + 1;
+            const d = refDate.getDate();
+            return peopleList.filter(p => {
+                const [, pm, pd] = p.dob.split('-').map(Number);
+                return pm === m && pd === d;
+            });
+        }
+
+        function checkBirthdayAlerts() {
+            const refDate = getReferenceDate();
+            const matches = getBirthdaysOnDate(refDate);
+            const banner = document.getElementById('admin-alert-banner');
+            const titleEl = document.getElementById('alert-banner-title');
+            const descEl = document.getElementById('alert-banner-desc');
+
+            if (!banner) return;
+
+            if (matches.length > 0) {
+                const names = matches.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+                titleEl.textContent = `🎉 ¡Alerta de Cumpleaños (${matches.length}) para el ${refDate.getDate()} de ${MONTHS_ES[refDate.getMonth()]}!`;
+                descEl.textContent = adminEmail
+                    ? `Hoy cumplen años: ${names}. Listo para enviar alerta a ${adminEmail}.`
+                    : `Hoy cumplen años: ${names}. Configura tu correo de administrador para enviar la alerta.`;
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function triggerEmailAlert(forceTest = false) {
+            const emailInput = document.getElementById('admin-email-input').value.trim();
+            const targetEmails = emailInput || adminEmail;
+
+            if (!targetEmails) {
+                showToast('Primero ingresa y guarda el correo de administrador.', 'error');
+                document.getElementById('admin-email-input').focus();
+                return;
+            }
+
+            if (emailInput && emailInput !== adminEmail) {
+                adminEmail = emailInput;
+                localStorage.setItem(STORAGE_KEY_ADMIN_EMAIL, adminEmail);
+            }
+
+            const refDate = getReferenceDate();
+            let matches = getBirthdaysOnDate(refDate);
+            let isFallbackNext = false;
+
+            if (matches.length === 0 && forceTest) {
+                if (peopleList.length === 0) {
+                    showToast('Registra al menos una persona para probar la alerta.', 'error');
+                    return;
+                }
+                const sorted = [...peopleList].sort(
+                    (a, b) => getDaysUntilNextBirthday(a.dob, refDate) - getDaysUntilNextBirthday(b.dob, refDate)
+                );
+                matches = [sorted[0]];
+                isFallbackNext = true;
+            }
+
+            if (matches.length === 0) {
+                showToast('No hay cumpleaños en la fecha seleccionada.', 'info');
+                return;
+            }
+
+            const namesList = matches.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+            const detailsLines = matches.map(p => {
+                const [by, bm, bd] = p.dob.split('-').map(Number);
+                const age = refDate.getFullYear() - by;
+                return `- ${p.firstName} ${p.lastName} (Fecha nac.: ${String(bd).padStart(2, '0')}/${String(bm).padStart(2, '0')}/${by} • Cumple ${age} años)`;
+            }).join('\n');
+
+            const subject = `🎂 Recordatorio de Cumpleaños (cumpleIGHO): ${namesList}`;
+            const body =
+`Hola Administrador,
+
+Este es un recordatorio automático generado desde cumpleIGHO.
+${isFallbackNext ? '(Nota: Prueba de alerta con el próximo cumpleaños registrado)' : `Fecha del recordatorio: ${refDate.getDate()} de ${MONTHS_ES[refDate.getMonth()]} de ${refDate.getFullYear()}`}
+
+Personas que cumplen años:
+${detailsLines}
+
+¡No olvides enviarles tus felicitaciones!
+— Sistema cumpleIGHO`;
+
+            const mailtoUrl = `mailto:${encodeURIComponent(targetEmails)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoUrl;
+            showToast(`Abriendo cliente de correo para enviar alerta a ${targetEmails}...`, 'success');
+        }
+
+        function openAutomationModal() {
+            document.getElementById('automation-modal').classList.remove('hidden');
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function closeAutomationModal() {
+            document.getElementById('automation-modal').classList.add('hidden');
+        }
+
+        function copyAppsScript() {
+            const codeText = document.getElementById('apps-script-code').textContent;
+            const textarea = document.createElement('textarea');
+            textarea.value = codeText;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('¡Código unificado de Google Apps Script copiado!', 'success');
+            } catch (err) {
+                showToast('No se pudo copiar automáticamente. Selecciónalo manualmente.', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // --- UTILIDADES DE CÁLCULO DE FECHAS Y EDAD ---
+        function formatDateToISO(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function calculateAgeOnDate(birthDate, targetDate) {
+            let years = targetDate.getFullYear() - birthDate.getFullYear();
+            let months = targetDate.getMonth() - birthDate.getMonth();
+            if (targetDate.getDate() < birthDate.getDate()) {
+                months--;
+            }
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+            return { years: Math.max(0, years), months: Math.max(0, months) };
+        }
+
+        function getDaysUntilNextBirthday(dobIso, fromDate) {
+            const [, m, d] = dobIso.split('-').map(Number);
+            const start = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+            let nextBday = new Date(start.getFullYear(), m - 1, d);
+            if (nextBday < start) {
+                nextBday = new Date(start.getFullYear() + 1, m - 1, d);
+            }
+            const diffMs = nextBday - start;
+            return Math.round(diffMs / (1000 * 60 * 60 * 24));
+        }
+
+        function getGeneration(year) {
+            if (year >= 2013) return 'Generación Alfa';
+            if (year >= 1997) return 'Generación Z';
+            if (year >= 1981) return 'Millennial';
+            if (year >= 1965) return 'Generación X';
+            if (year >= 1946) return 'Baby Boomer';
+            return 'Generación Silenciosa';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // --- NOTIFICACIONES TOAST ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-slate-900 text-white border-emerald-500/40',
+                error: 'bg-rose-600 text-white border-rose-400',
+                info: 'bg-slate-800 text-white border-slate-700'
+            };
+
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs sm:text-sm font-medium transition-all transform translate-y-2 opacity-0 ${styles[type] || styles.info}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
